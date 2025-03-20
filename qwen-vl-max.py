@@ -82,6 +82,7 @@ try:
     stream_response = client.chat.completions.create(
         model="qwen-vl-max-latest",
         messages=messages,
+        response_format={"type": "json_object"},  # 启用JSON模式输出
         stream=True  # 启用流式输出
     )
     
