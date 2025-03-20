@@ -5,7 +5,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultArea = document.querySelector('.result-area');
     const loading = document.getElementById('loading');
     const resultContent = document.getElementById('result-content');
-    const homeworkTabs = document.getElementById('homework-tabs');
+    let homeworkTabs = document.getElementById('homework-tabs');  // 改为let声明
     const homeworkResults = document.getElementById('homework-results');
     const newCorrectionBtn = document.getElementById('new-correction-btn');
     const homeworkResultTemplate = document.getElementById('homework-result-template');
@@ -142,6 +142,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 // 准备结果区域
                 resultContent.style.display = 'block';
                 
+                // 移除旧的作业标签点击事件监听器 - 修改这部分代码
+                homeworkTabs.innerHTML = ''; // 清空内容而不是替换元素
+                
                 // 为每个作业创建标签和结果容器
                 Object.keys(data.homework_data).forEach((homeworkIndex, i) => {
                     const homeworkData = data.homework_data[homeworkIndex];
@@ -156,10 +159,14 @@ document.addEventListener('DOMContentLoaded', function() {
                     // 克隆结果模板
                     const resultContent = document.importNode(homeworkResultTemplate.content, true);
                     const resultElement = resultContent.querySelector('.homework-result');
+                    resultElement.id = `homework-result-${homeworkIndex}`;
                     resultElement.dataset.homework = homeworkIndex;
                     resultElement.style.display = i === 0 ? 'block' : 'none';
                     
                     homeworkResults.appendChild(resultContent);
+                    
+                    // 设置标签切换功能
+                    setupTabSwitching(resultElement);
                     
                     // 开始批改
                     correctEssay(homeworkData.image_paths, homeworkIndex);
@@ -197,13 +204,20 @@ document.addEventListener('DOMContentLoaded', function() {
     // 发送批改请求并处理流式响应
     function correctEssay(imagePaths, homeworkIndex) {
         const resultElement = document.querySelector(`.homework-result[data-homework="${homeworkIndex}"]`);
+        
+        // 确保结果元素存在
+        if (!resultElement) {
+            console.error(`未找到作业 #${homeworkIndex} 的结果容器`);
+            return;
+        }
+        
         resultElement.style.display = 'block';
         
         const streamOutput = resultElement.querySelector('.stream-output');
         const resultContainer = resultElement.querySelector('.result-container');
         
         streamOutput.style.display = 'block';
-        streamOutput.textContent = '正在连接到模型...\n';
+        streamOutput.textContent = `正在连接到模型...(作业 #${Number(homeworkIndex) + 1})\n`;
         
         fetch('/correct', {
             method: 'POST',
@@ -247,6 +261,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 处理流式数据
     function handleStreamData(data, resultElement) {
+        // 确保只更新当前作业的结果容器
+        if (!resultElement) {
+            console.error('处理流数据时找不到结果元素');
+            return;
+        }
+        
         const streamOutput = resultElement.querySelector('.stream-output');
         const resultContainer = resultElement.querySelector('.result-container');
         
@@ -313,8 +333,18 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // 设置标签切换功能
     function setupTabSwitching(resultElement) {
+        if (!resultElement) return;
+        
         const tabButtons = resultElement.querySelectorAll('.tab-btn');
+        
+        // 移除现有事件监听器
         tabButtons.forEach(button => {
+            const newButton = button.cloneNode(true);
+            button.parentNode.replaceChild(newButton, button);
+        });
+        
+        // 重新添加事件监听器
+        resultElement.querySelectorAll('.tab-btn').forEach(button => {
             button.addEventListener('click', () => {
                 // 移除所有标签和内容的活跃状态
                 resultElement.querySelectorAll('.tab-btn').forEach(btn => {
