@@ -1,3 +1,4 @@
 google-generativeai
 Pillow
-markdown
+markdown2
+openai

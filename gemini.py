@@ -18,13 +18,12 @@ if not api_key:
 genai.configure(api_key=api_key)
 
 # 加载 Gemini 2.0 Flash Exp 模型
-model = genai.GenerativeModel('models/gemini-2.0-flash-exp')
+model = genai.GenerativeModel('models/gemini-2.0-pro-exp')
 
 # 构建 Prompt (保持不变)
 prompt_text = """你是一名初中英语老师，现有一篇英语作文需要你批改，你需要找出文章中所有的拼写错误，用词不当以及语法错误；
 同时找出文章中的高级词汇，亮点表达；
-最后，你还需要为该同学提出写作进步的建议。
-为了定位，你需要输出原文，并请将文章中的所有错误用黑体字标注出来；
+为了定位，你需要输出原文，并请将文章中的所有错误用黑体字标注出来（注意所有都要标出来）；
 对于错误分析，请详细分析语法知识点并给出一定的正例与反例；
 对于亮点分析，请详细给出亮点的优秀之处。"""
 
