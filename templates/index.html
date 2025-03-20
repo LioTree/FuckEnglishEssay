@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>英语作文批改助手</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <div class="container">
+        <h1>英语作文批改助手</h1>
+        <div class="upload-area">
+            <form id="upload-form" enctype="multipart/form-data">
+                <div class="form-group">
+                    <label for="file-input">上传作文图片（支持多张）</label>
+                    <input type="file" id="file-input" name="files[]" multiple accept=".jpg,.jpeg,.png,.gif">
+                    <div class="file-preview" id="file-preview"></div>
+                </div>
+                <button type="submit" id="submit-btn">开始批改</button>
+            </form>
+        </div>
+
+        <div class="result-area" style="display:none;">
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>正在批改中，请稍候...</p>
+            </div>
+            
+            <div id="result-content" style="display:none;">
+                <h2>批改结果</h2>
+                
+                <div class="stream-output" id="stream-output"></div>
+                
+                <div class="result-container" id="result-container" style="display:none;">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-tab="original">原始作文</button>
+                        <button class="tab-btn" data-tab="corrected">批改后作文</button>
+                        <button class="tab-btn" data-tab="diff">差异对比</button>
+                        <button class="tab-btn" data-tab="corrections">逐句批改</button>
+                        <button class="tab-btn" data-tab="overall">整体评价</button>
+                        <button class="tab-btn" data-tab="raw">原始输出</button>
+                    </div>
+                    
+                    <div class="tab-content">
+                        <div class="tab-pane active" id="original">
+                            <pre id="original-essay"></pre>
+                        </div>
+                        <div class="tab-pane" id="corrected">
+                            <pre id="corrected-essay"></pre>
+                        </div>
+                        <div class="tab-pane" id="diff">
+                            <div id="diff-result"></div>
+                        </div>
+                        <div class="tab-pane" id="corrections">
+                            <div id="sentence-corrections"></div>
+                        </div>
+                        <div class="tab-pane" id="overall">
+                            <div id="overall-comments"></div>
+                        </div>
+                        <div class="tab-pane" id="raw">
+                            <pre id="raw-output"></pre>
+                        </div>
+                    </div>
+                </div>
+                
+                <button id="new-correction-btn" class="btn">新的批改</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+</body>
+</html>

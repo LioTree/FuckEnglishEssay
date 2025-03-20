@@ -30,7 +30,7 @@ correction_prompt = """你是一名初中英语老师，现有一篇英语作文
 
 # 读取图片文件
 try:
-    image_path = "images/test3.jpg"
+    image_path = "images/test4.jpg"
     image = Image.open(image_path)
     
     # 将图片转换为base64编码

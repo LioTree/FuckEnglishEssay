@@ -45,7 +45,7 @@ prompt_text = """你是一名初中英语老师，现有一篇英语作文需要
 
 # 读取图片文件
 try:
-    image_path = "images/test4.jpg"
+    image_path = "images/test5.jpg"
     image = Image.open(image_path)
     
     # 将图片转换为base64编码
@@ -125,6 +125,51 @@ try:
                 "overall_comments": "无法从模型响应中提取JSON数据，请查看原始输出。"
             }
     
+    # 新增：将文本拆分成句子的函数
+    def split_into_sentences(text):
+        """
+        将文本拆分成句子，每个句子一行，并去除句子内的换行符
+        """
+        # 先替换掉句子内的换行符（保留段落间的换行）
+        text = re.sub(r'(?<![.!?])\n(?![.!?])', ' ', text)
+        
+        # 使用正则表达式拆分句子
+        sentences = re.split(r'([.!?])\s+', text)
+        
+        # 重组句子（因为split会将分隔符也分离出来）
+        formatted_sentences = []
+        i = 0
+        while i < len(sentences):
+            if i + 1 < len(sentences) and sentences[i+1] in ['.', '!', '?']:
+                formatted_sentences.append(sentences[i] + sentences[i+1])
+                i += 2
+            else:
+                formatted_sentences.append(sentences[i])
+                i += 1
+        
+        # 过滤掉空句子并返回
+        return '\n'.join([s.strip() for s in formatted_sentences if s.strip()])
+
+    # 新增：生成作文diff结果的HTML
+    import subprocess  # 如未导入
+    try:
+        # 将原始文章和修改后的文章拆分成每句一行的格式
+        original_formatted = split_into_sentences(result_json.get("original_essay", ""))
+        corrected_formatted = split_into_sentences(result_json.get("corrected_essay", ""))
+        
+        with tempfile.NamedTemporaryFile('w', delete=False, encoding='utf-8', suffix='.txt') as f_orig:
+            f_orig.write(original_formatted)
+            orig_file_name = f_orig.name
+        with tempfile.NamedTemporaryFile('w', delete=False, encoding='utf-8', suffix='.txt') as f_corr:
+            f_corr.write(corrected_formatted)
+            corr_file_name = f_corr.name
+        diff_command = f"icdiff --cols=100 {orig_file_name} {corr_file_name} | aha --title 'Diff'"
+        diff_html = subprocess.check_output(diff_command, shell=True, encoding='utf-8')
+        os.remove(orig_file_name)
+        os.remove(corr_file_name)
+    except Exception as diff_e:
+        diff_html = f"<div>生成diff结果时出错: {diff_e}</div>"
+
     # 准备HTML内容
     html_content = f"""
     <!DOCTYPE html>
@@ -186,6 +231,11 @@ try:
         <div class="section corrected">
             <h2>批改后的作文</h2>
             <pre>{result_json.get("corrected_essay", "未提供")}</pre>
+        </div>
+        
+        <div class="section">
+            <h2>作文diff结果</h2>
+            {diff_html}
         </div>
         
         <div class="section">
