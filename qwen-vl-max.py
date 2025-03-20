@@ -7,6 +7,8 @@ import webbrowser
 import tempfile
 import base64
 import sys
+import json
+import re
 
 api_key = os.environ.get('QWEN_API_KEY')
 
@@ -21,13 +23,29 @@ client = OpenAI(
     base_url="https://dashscope.aliyuncs.com/compatible-mode/v1"
 )
 
-# 构建 Prompt (保持不变)
-prompt_text = """你是一名初中英语老师，现有一篇英语作文需要你批改（要注意文章中可能的涂改）, 你需要找出文章中所有的拼写错误，用词不当以及语法错误。首先你需要输出原作文（主要不要使用markdown的```进行包裹，而是直接输出）以及批改过的作文。然后你需要将作文拆成一个一个句子，逐个句子给出批改的结果以及修正后的句子，如果没有错误则输出该句子没有问题。并在总结整篇作文的主要问题，比如时态问题，语法问题。评价用中文给出。
-。"""
+# 构建 Prompt (修改为要求JSON输出)
+prompt_text = """你是一名初中英语老师，现有一篇英语作文需要你批改（要注意文章中可能的涂改，有些字上仅仅画了一道，但那也是涂改）, 你需要找出文章中所有的拼写错误，用词不当以及语法错误。
+
+请以JSON格式输出你的批改结果，格式如下：
+{
+  "original_essay": "原始作文内容",
+  "corrected_essay": "批改后的作文内容",
+  "sentence_corrections": [
+    {
+      "original": "原句",
+      "corrected": "修正后的句子",
+      "comments": "对这个句子的评价和解释"
+    },
+    // 更多句子批改...
+  ],
+  "overall_comments": "对整篇作文主要问题的总结和评价"
+}
+
+评价请用中文给出。确保你的输出是有效的JSON格式，便于自动处理。不要添加任何额外解释或前后缀，直接输出JSON。"""
 
 # 读取图片文件
 try:
-    image_path = "images/test3.jpg"
+    image_path = "images/test4.jpg"
     image = Image.open(image_path)
     
     # 将图片转换为base64编码
@@ -67,12 +85,12 @@ try:
         stream=True  # 启用流式输出
     )
     
-    # 收集完整的响应用于HTML生成
+    # 收集完整的响应用于JSON解析
     full_response = ""
     
     # 逐步处理流式响应并打印
     for chunk in stream_response:
-        if chunk.choices and chunk.choices[0].delta.content:
+        if (chunk.choices and chunk.choices[0].delta.content):
             content = chunk.choices[0].delta.content
             print(content, end='', flush=True)
             full_response += content
@@ -80,7 +98,34 @@ try:
     # 打印完成后换行
     print("\n\n批改完成！")
     
-    # 将Markdown转换为HTML
+    # 尝试从响应中提取JSON
+    try:
+        # 尝试直接解析完整响应
+        result_json = json.loads(full_response)
+    except json.JSONDecodeError:
+        # 如果直接解析失败，尝试使用正则表达式提取JSON部分
+        json_match = re.search(r'({[\s\S]*})', full_response)
+        if json_match:
+            try:
+                result_json = json.loads(json_match.group(1))
+            except:
+                print("无法从响应中提取有效的JSON，将显示原始响应")
+                result_json = {
+                    "original_essay": "解析失败",
+                    "corrected_essay": "解析失败",
+                    "sentence_corrections": [],
+                    "overall_comments": "无法从模型响应中提取JSON数据，请查看原始输出。"
+                }
+        else:
+            print("无法从响应中找到JSON格式内容")
+            result_json = {
+                "original_essay": "解析失败",
+                "corrected_essay": "解析失败",
+                "sentence_corrections": [],
+                "overall_comments": "无法从模型响应中提取JSON数据，请查看原始输出。"
+            }
+    
+    # 准备HTML内容
     html_content = f"""
     <!DOCTYPE html>
     <html>
@@ -98,27 +143,82 @@ try:
             h1, h2, h3 {{
                 color: #2c3e50;
             }}
-            code {{
+            .section {{
+                margin-bottom: 20px;
+                padding: 15px;
+                border: 1px solid #eee;
+                border-radius: 5px;
+            }}
+            .original {{
+                background-color: #f9f9f9;
+            }}
+            .corrected {{
+                background-color: #f0f7ff;
+            }}
+            .sentence-correction {{
+                margin-bottom: 15px;
+                padding: 10px;
                 background-color: #f5f5f5;
-                padding: 2px 4px;
-                border-radius: 4px;
+                border-left: 3px solid #3498db;
+            }}
+            .comments {{
+                color: #e74c3c;
+                font-style: italic;
+            }}
+            .overall {{
+                background-color: #f0fff0;
+                font-weight: bold;
             }}
             pre {{
-                background-color: #f5f5f5;
-                padding: 10px;
-                border-radius: 4px;
-                overflow-x: auto;
-            }}
-            blockquote {{
-                border-left: 4px solid #ccc;
-                padding-left: 15px;
-                color: #555;
+                white-space: pre-wrap;
+                word-wrap: break-word;
             }}
         </style>
     </head>
     <body>
         <h1>英语作文批改结果 (千问模型)</h1>
-        {markdown2.markdown(full_response, extras=["fenced-code-blocks", "tables", "break-on-newline"])}
+        
+        <div class="section original">
+            <h2>原始作文</h2>
+            <pre>{result_json.get("original_essay", "未提供")}</pre>
+        </div>
+        
+        <div class="section corrected">
+            <h2>批改后的作文</h2>
+            <pre>{result_json.get("corrected_essay", "未提供")}</pre>
+        </div>
+        
+        <div class="section">
+            <h2>逐句批改</h2>
+    """
+    
+    # 添加每个句子的批改
+    if "sentence_corrections" in result_json and result_json["sentence_corrections"]:
+        for idx, sentence in enumerate(result_json["sentence_corrections"], 1):
+            html_content += f"""
+            <div class="sentence-correction">
+                <h3>句子 {idx}</h3>
+                <p><strong>原句:</strong> {sentence.get("original", "")}</p>
+                <p><strong>修正:</strong> {sentence.get("corrected", "")}</p>
+                <p class="comments"><strong>评注:</strong> {sentence.get("comments", "")}</p>
+            </div>
+            """
+    else:
+        html_content += "<p>未提供逐句批改</p>"
+        
+    # 添加整体评价
+    html_content += f"""
+        </div>
+        
+        <div class="section overall">
+            <h2>整体评价</h2>
+            <p>{result_json.get("overall_comments", "未提供整体评价")}</p>
+        </div>
+        
+        <div class="section">
+            <h2>原始模型输出</h2>
+            <pre>{full_response}</pre>
+        </div>
     </body>
     </html>
     """
