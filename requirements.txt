@@ -1,8 +1,6 @@
 google-generativeai
-pillow==9.0.0
+pillow
 markdown2
-openai==1.0.0
-flask==2.0.1
-werkzeug==2.0.1
-icdiff==2.0.6
-aha==0.5.1
+openai
+flask
+werkzeug
