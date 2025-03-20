@@ -1,77 +1,137 @@
 document.addEventListener('DOMContentLoaded', function() {
     const uploadForm = document.getElementById('upload-form');
-    const fileInput = document.getElementById('file-input');
-    const filePreview = document.getElementById('file-preview');
+    const homeworkContainer = document.getElementById('homework-container');
+    const addHomeworkBtn = document.getElementById('add-homework');
     const resultArea = document.querySelector('.result-area');
     const loading = document.getElementById('loading');
     const resultContent = document.getElementById('result-content');
-    const streamOutput = document.getElementById('stream-output');
-    const resultContainer = document.getElementById('result-container');
-    const originalEssay = document.getElementById('original-essay');
-    const correctedEssay = document.getElementById('corrected-essay');
-    const sentenceCorrections = document.getElementById('sentence-corrections');
-    const overallComments = document.getElementById('overall-comments');
-    const rawOutput = document.getElementById('raw-output');
+    const homeworkTabs = document.getElementById('homework-tabs');
+    const homeworkResults = document.getElementById('homework-results');
     const newCorrectionBtn = document.getElementById('new-correction-btn');
-    const diffResult = document.getElementById('diff-result');
+    const homeworkResultTemplate = document.getElementById('homework-result-template');
     
-    // 预览已选择的图片
-    fileInput.addEventListener('change', function() {
-        filePreview.innerHTML = '';
-        for (let i = 0; i < this.files.length; i++) {
-            const file = this.files[i];
-            if (!file.type.match('image.*')) continue;
-            
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                const div = document.createElement('div');
-                div.className = 'preview-item';
-                div.innerHTML = `
-                    <img src="${e.target.result}" alt="预览">
-                    <button type="button" class="remove-btn" data-index="${i}">×</button>
-                `;
-                filePreview.appendChild(div);
-            };
-            reader.readAsDataURL(file);
+    let homeworkCount = 1; // 初始只有一个作业
+    
+    // 添加新作业
+    addHomeworkBtn.addEventListener('click', function() {
+        const newIndex = homeworkCount;
+        homeworkCount++;
+        
+        const homeworkBlock = document.createElement('div');
+        homeworkBlock.className = 'homework-block';
+        homeworkBlock.dataset.index = newIndex;
+        
+        homeworkBlock.innerHTML = `
+            <div class="form-group">
+                <label>作业 #${homeworkCount} <button type="button" class="remove-homework">删除</button></label>
+                <input type="file" class="file-input" name="files[${newIndex}][]" multiple>
+                <div class="file-preview"></div>
+            </div>
+        `;
+        
+        homeworkContainer.appendChild(homeworkBlock);
+        
+        // 为新添加的删除按钮添加事件监听
+        homeworkBlock.querySelector('.remove-homework').addEventListener('click', function() {
+            homeworkBlock.remove();
+        });
+        
+        // 为新添加的文件输入添加预览功能
+        setupFilePreview(homeworkBlock.querySelector('.file-input'), homeworkBlock.querySelector('.file-preview'));
+    });
+    
+    // 移除已有作业的处理
+    homeworkContainer.addEventListener('click', function(e) {
+        if (e.target.classList.contains('remove-homework')) {
+            const homeworkBlock = e.target.closest('.homework-block');
+            homeworkBlock.remove();
         }
     });
     
-    // 移除预览图片
-    filePreview.addEventListener('click', function(e) {
-        if (e.target.classList.contains('remove-btn')) {
-            e.preventDefault();
-            // 注意：由于FileList是只读的，所以我们需要重新创建一个FormData对象
-            const index = parseInt(e.target.dataset.index);
-            e.target.parentElement.remove();
-            
-            // 这里只是视觉上的移除，在提交时需要处理实际的文件列表
-            // 实际处理在提交表单时进行
-        }
-    });
+    // 设置文件预览功能
+    function setupFilePreview(fileInput, previewContainer) {
+        fileInput.addEventListener('change', function() {
+            previewContainer.innerHTML = '';
+            for (let i = 0; i < this.files.length; i++) {
+                const file = this.files[i];
+                if (!file.type.match('image.*')) continue;
+                
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const div = document.createElement('div');
+                    div.className = 'preview-item';
+                    div.innerHTML = `
+                        <img src="${e.target.result}" alt="预览">
+                        <button type="button" class="remove-btn" data-index="${i}">×</button>
+                    `;
+                    previewContainer.appendChild(div);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+        
+        // 移除预览图片
+        previewContainer.addEventListener('click', function(e) {
+            if (e.target.classList.contains('remove-btn')) {
+                e.preventDefault();
+                e.target.closest('.preview-item').remove();
+            }
+        });
+    }
+    
+    // 为初始作业块设置文件预览
+    const initialFileInput = document.querySelector('.homework-block[data-index="0"] .file-input');
+    const initialPreview = document.querySelector('.homework-block[data-index="0"] .file-preview');
+    setupFilePreview(initialFileInput, initialPreview);
     
     // 提交表单
     uploadForm.addEventListener('submit', function(e) {
         e.preventDefault();
         
-        const formData = new FormData();
-        const files = fileInput.files;
+        // 获取所有作业块
+        const homeworkBlocks = document.querySelectorAll('.homework-block');
         
-        if (files.length === 0) {
-            alert('请选择至少一张图片');
+        if (homeworkBlocks.length === 0) {
+            alert('请至少添加一个作业');
             return;
         }
         
-        for (let i = 0; i < files.length; i++) {
-            formData.append('files[]', files[i]);
+        // 检查是否每个作业都有上传文件
+        let hasFiles = true;
+        homeworkBlocks.forEach(block => {
+            const fileInput = block.querySelector('.file-input');
+            if (fileInput.files.length === 0) {
+                hasFiles = false;
+            }
+        });
+        
+        if (!hasFiles) {
+            alert('请确保每个作业都上传了至少一张图片');
+            return;
         }
+        
+        // 准备表单数据
+        const formData = new FormData();
+        
+        homeworkBlocks.forEach(block => {
+            const index = block.dataset.index;
+            const fileInput = block.querySelector('.file-input');
+            
+            for (let i = 0; i < fileInput.files.length; i++) {
+                formData.append(`files[${index}][]`, fileInput.files[i]);
+            }
+        });
         
         // 显示结果区域和加载动画
         resultArea.style.display = 'block';
         loading.style.display = 'block';
         resultContent.style.display = 'none';
-        streamOutput.textContent = '';
         
-        // 第一步：上传图片
+        // 清空之前的结果
+        homeworkTabs.innerHTML = '';
+        homeworkResults.innerHTML = '';
+        
+        // 上传文件
         fetch('/upload', {
             method: 'POST',
             body: formData
@@ -79,8 +139,50 @@ document.addEventListener('DOMContentLoaded', function() {
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                // 第二步：发送批改请求
-                return correctEssay(data.image_paths);
+                // 准备结果区域
+                resultContent.style.display = 'block';
+                
+                // 为每个作业创建标签和结果容器
+                Object.keys(data.homework_data).forEach((homeworkIndex, i) => {
+                    const homeworkData = data.homework_data[homeworkIndex];
+                    
+                    // 创建作业标签
+                    const tabButton = document.createElement('button');
+                    tabButton.className = 'homework-tab' + (i === 0 ? ' active' : '');
+                    tabButton.textContent = `作业 ${Number(homeworkIndex) + 1}`;
+                    tabButton.dataset.homework = homeworkIndex;
+                    homeworkTabs.appendChild(tabButton);
+                    
+                    // 克隆结果模板
+                    const resultContent = document.importNode(homeworkResultTemplate.content, true);
+                    const resultElement = resultContent.querySelector('.homework-result');
+                    resultElement.dataset.homework = homeworkIndex;
+                    resultElement.style.display = i === 0 ? 'block' : 'none';
+                    
+                    homeworkResults.appendChild(resultContent);
+                    
+                    // 开始批改
+                    correctEssay(homeworkData.image_paths, homeworkIndex);
+                });
+                
+                // 作业标签切换事件
+                homeworkTabs.addEventListener('click', function(e) {
+                    if (e.target.classList.contains('homework-tab')) {
+                        // 更新标签状态
+                        document.querySelectorAll('.homework-tab').forEach(tab => {
+                            tab.classList.remove('active');
+                        });
+                        e.target.classList.add('active');
+                        
+                        // 更新结果显示
+                        const homeworkIndex = e.target.dataset.homework;
+                        document.querySelectorAll('.homework-result').forEach(result => {
+                            result.style.display = result.dataset.homework === homeworkIndex ? 'block' : 'none';
+                        });
+                    }
+                });
+                
+                loading.style.display = 'none';
             } else {
                 throw new Error(data.error || '上传失败');
             }
@@ -88,28 +190,29 @@ document.addEventListener('DOMContentLoaded', function() {
         .catch(error => {
             loading.style.display = 'none';
             resultContent.style.display = 'block';
-            streamOutput.textContent = `错误: ${error.message}`;
+            alert(`错误: ${error.message}`);
         });
     });
     
     // 发送批改请求并处理流式响应
-    function correctEssay(imagePaths) {
-        loading.style.display = 'block';
-        resultContent.style.display = 'block';
-        resultContainer.style.display = 'none';
+    function correctEssay(imagePaths, homeworkIndex) {
+        const resultElement = document.querySelector(`.homework-result[data-homework="${homeworkIndex}"]`);
+        resultElement.style.display = 'block';
+        
+        const streamOutput = resultElement.querySelector('.stream-output');
+        const resultContainer = resultElement.querySelector('.result-container');
+        
         streamOutput.style.display = 'block';
         streamOutput.textContent = '正在连接到模型...\n';
         
-        // 创建EventSource连接
         fetch('/correct', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ image_paths: imagePaths })
+            body: JSON.stringify({ image_paths: imagePaths, homework_index: homeworkIndex })
         })
         .then(response => {
-            // 处理响应为事件流
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             
@@ -125,27 +228,28 @@ document.addEventListener('DOMContentLoaded', function() {
                     if (event.startsWith('data: ')) {
                         try {
                             const data = JSON.parse(event.substring(6));
-                            handleStreamData(data);
+                            handleStreamData(data, resultElement);
                         } catch (e) {
                             console.error('解析事件数据失败:', e);
                         }
                     }
                 }
                 
-                // 继续读取
                 return reader.read().then(processStream);
             }
             
             return reader.read().then(processStream);
         })
         .catch(error => {
-            loading.style.display = 'none';
             streamOutput.textContent += `\n错误: ${error.message}`;
         });
     }
     
     // 处理流式数据
-    function handleStreamData(data) {
+    function handleStreamData(data, resultElement) {
+        const streamOutput = resultElement.querySelector('.stream-output');
+        const resultContainer = resultElement.querySelector('.result-container');
+        
         if (data.status === 'processing') {
             streamOutput.textContent += data.message + '\n';
         } 
@@ -154,7 +258,6 @@ document.addEventListener('DOMContentLoaded', function() {
             streamOutput.scrollTop = streamOutput.scrollHeight;
         } 
         else if (data.status === 'complete') {
-            loading.style.display = 'none';
             streamOutput.textContent += '\n\n批改完成！';
             
             // 显示结果容器
@@ -162,17 +265,18 @@ document.addEventListener('DOMContentLoaded', function() {
             
             // 填充结果数据
             const result = data.result;
-            originalEssay.textContent = result.original_essay || '未提供原始作文';
-            correctedEssay.textContent = result.corrected_essay || '未提供批改后作文';
+            resultElement.querySelector('.original-essay').textContent = result.original_essay || '未提供原始作文';
+            resultElement.querySelector('.corrected-essay').textContent = result.corrected_essay || '未提供批改后作文';
             
             // 填充差异比较结果
             if (result.diff_html) {
-                diffResult.innerHTML = result.diff_html;
+                resultElement.querySelector('.diff-result').innerHTML = result.diff_html;
             } else {
-                diffResult.innerHTML = '<p>未能生成差异对比结果</p>';
+                resultElement.querySelector('.diff-result').innerHTML = '<p>未能生成差异对比结果</p>';
             }
             
             // 填充逐句批改
+            const sentenceCorrections = resultElement.querySelector('.sentence-corrections');
             sentenceCorrections.innerHTML = '';
             if (result.sentence_corrections && result.sentence_corrections.length > 0) {
                 result.sentence_corrections.forEach((correction, index) => {
@@ -191,13 +295,15 @@ document.addEventListener('DOMContentLoaded', function() {
             }
             
             // 填充整体评价
-            overallComments.textContent = result.overall_comments || '未提供整体评价';
+            resultElement.querySelector('.overall-comments').textContent = result.overall_comments || '未提供整体评价';
             
             // 填充原始输出
-            rawOutput.textContent = data.raw || '';
+            resultElement.querySelector('.raw-output').textContent = data.raw || '';
+            
+            // 设置标签切换功能
+            setupTabSwitching(resultElement);
         } 
         else if (data.status === 'error') {
-            loading.style.display = 'none';
             streamOutput.textContent += `\n\n错误: ${data.message}\n`;
             if (data.raw) {
                 streamOutput.textContent += `\n原始响应: ${data.raw}`;
@@ -205,27 +311,43 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // 标签切换功能
-    document.querySelectorAll('.tab-btn').forEach(button => {
-        button.addEventListener('click', () => {
-            // 移除所有标签和内容的活跃状态
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-pane').forEach(pane => pane.classList.remove('active'));
-            
-            // 为当前标签和内容添加活跃状态
-            button.classList.add('active');
-            const tabId = button.getAttribute('data-tab');
-            document.getElementById(tabId).classList.add('active');
+    // 设置标签切换功能
+    function setupTabSwitching(resultElement) {
+        const tabButtons = resultElement.querySelectorAll('.tab-btn');
+        tabButtons.forEach(button => {
+            button.addEventListener('click', () => {
+                // 移除所有标签和内容的活跃状态
+                resultElement.querySelectorAll('.tab-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                resultElement.querySelectorAll('.tab-pane').forEach(pane => {
+                    pane.classList.remove('active');
+                });
+                
+                // 为当前标签和内容添加活跃状态
+                button.classList.add('active');
+                const tabId = button.getAttribute('data-tab');
+                resultElement.querySelector(`.tab-pane[data-pane="${tabId}"]`).classList.add('active');
+            });
         });
-    });
+    }
     
     // 新的批改按钮
     newCorrectionBtn.addEventListener('click', function() {
         // 重置表单和界面状态
         uploadForm.reset();
-        filePreview.innerHTML = '';
+        document.querySelectorAll('.file-preview').forEach(preview => {
+            preview.innerHTML = '';
+        });
+        
+        // 只保留第一个作业块，移除其他所有
+        const homeworkBlocks = document.querySelectorAll('.homework-block');
+        for (let i = 1; i < homeworkBlocks.length; i++) {
+            homeworkBlocks[i].remove();
+        }
+        
+        homeworkCount = 1;
         resultArea.style.display = 'none';
         resultContent.style.display = 'none';
-        streamOutput.textContent = '';
     });
 });

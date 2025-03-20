@@ -11,15 +11,23 @@
         <h1>英语作文批改助手</h1>
         <div class="upload-area">
             <form id="upload-form" enctype="multipart/form-data">
-                <div class="form-group">
-                    <label for="file-input">上传作文图片（支持多张）</label>
-                    <input type="file" id="file-input" name="files[]" multiple accept=".jpg,.jpeg,.png,.gif">
-                    <div class="file-preview" id="file-preview"></div>
+                <div id="homework-container">
+                    <!-- 初始作业块 -->
+                    <div class="homework-block" data-index="0">
+                        <div class="form-group">
+                            <label>作业 #1</label>
+                            <input type="file" class="file-input" name="files[0][]" multiple>
+                            <div class="file-preview"></div>
+                        </div>
+                    </div>
                 </div>
-                <button type="submit" id="submit-btn">开始批改</button>
+                <div class="form-group">
+                    <button type="button" id="add-homework">添加新作业</button>
+                    <button type="submit" id="submit-btn">开始批改</button>
+                </div>
             </form>
         </div>
-
+        
         <div class="result-area" style="display:none;">
             <div class="loading" id="loading">
                 <div class="spinner"></div>
@@ -29,38 +37,14 @@
             <div id="result-content" style="display:none;">
                 <h2>批改结果</h2>
                 
-                <div class="stream-output" id="stream-output"></div>
+                <!-- 作业结果导航选项卡 -->
+                <div class="homework-tabs" id="homework-tabs">
+                    <!-- 作业标签将通过JS动态添加 -->
+                </div>
                 
-                <div class="result-container" id="result-container" style="display:none;">
-                    <div class="tabs">
-                        <button class="tab-btn active" data-tab="original">原始作文</button>
-                        <button class="tab-btn" data-tab="corrected">批改后作文</button>
-                        <button class="tab-btn" data-tab="diff">差异对比</button>
-                        <button class="tab-btn" data-tab="corrections">逐句批改</button>
-                        <button class="tab-btn" data-tab="overall">整体评价</button>
-                        <button class="tab-btn" data-tab="raw">原始输出</button>
-                    </div>
-                    
-                    <div class="tab-content">
-                        <div class="tab-pane active" id="original">
-                            <pre id="original-essay"></pre>
-                        </div>
-                        <div class="tab-pane" id="corrected">
-                            <pre id="corrected-essay"></pre>
-                        </div>
-                        <div class="tab-pane" id="diff">
-                            <div id="diff-result"></div>
-                        </div>
-                        <div class="tab-pane" id="corrections">
-                            <div id="sentence-corrections"></div>
-                        </div>
-                        <div class="tab-pane" id="overall">
-                            <div id="overall-comments"></div>
-                        </div>
-                        <div class="tab-pane" id="raw">
-                            <pre id="raw-output"></pre>
-                        </div>
-                    </div>
+                <!-- 各作业结果容器 -->
+                <div id="homework-results">
+                    <!-- 作业结果将通过JS动态添加 -->
                 </div>
                 
                 <button id="new-correction-btn" class="btn">新的批改</button>
@@ -68,6 +52,45 @@
         </div>
     </div>
 
+    <!-- 作业结果模板 (隐藏) -->
+    <template id="homework-result-template">
+        <div class="homework-result" style="display:none;">
+            <div class="stream-output"></div>
+            
+            <div class="result-container" style="display:none;">
+                <div class="tabs">
+                    <button class="tab-btn active" data-tab="original">原始作文</button>
+                    <button class="tab-btn" data-tab="corrected">批改后作文</button>
+                    <button class="tab-btn" data-tab="diff">差异对比</button>
+                    <button class="tab-btn" data-tab="corrections">逐句批改</button>
+                    <button class="tab-btn" data-tab="overall">整体评价</button>
+                    <button class="tab-btn" data-tab="raw">原始输出</button>
+                </div>
+                
+                <div class="tab-content">
+                    <div class="tab-pane active" data-pane="original">
+                        <pre class="original-essay"></pre>
+                    </div>
+                    <div class="tab-pane" data-pane="corrected">
+                        <pre class="corrected-essay"></pre>
+                    </div>
+                    <div class="tab-pane" data-pane="diff">
+                        <div class="diff-result"></div>
+                    </div>
+                    <div class="tab-pane" data-pane="corrections">
+                        <div class="sentence-corrections"></div>
+                    </div>
+                    <div class="tab-pane" data-pane="overall">
+                        <div class="overall-comments"></div>
+                    </div>
+                    <div class="tab-pane" data-pane="raw">
+                        <pre class="raw-output"></pre>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </template>
+    
     <script src="{{ url_for('static', filename='js/script.js') }}"></script>
 </body>
 </html>

@@ -247,3 +247,66 @@ pre {
 #diff-result .change {
     background-color: #fff5b1;
 }
+
+/* 作业块样式 */
+.homework-block {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 15px;
+}
+
+/* 作业标签导航 */
+.homework-tabs {
+    display: flex;
+    gap: 5px;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #ddd;
+    overflow-x: auto;
+    padding-bottom: 5px;
+}
+
+.homework-tab {
+    padding: 10px 15px;
+    background-color: #f5f5f5;
+    border: none;
+    border-radius: 4px 4px 0 0;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.homework-tab.active {
+    background-color: #3498db;
+    color: white;
+}
+
+/* 作业结果容器 */
+.homework-result {
+    margin-bottom: 20px;
+}
+
+/* 确保tab-pane正确引用ID而不是类 */
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* 移除按钮样式 */
+.remove-homework {
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 5px 10px;
+    margin-left: 10px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.remove-homework:hover {
+    background-color: #c0392b;
+}

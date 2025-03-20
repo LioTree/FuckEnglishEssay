@@ -37,35 +37,51 @@ def index():
 
 @app.route('/upload', methods=['POST'])
 def upload_file():
-    # 检查是否有文件被上传
-    if 'files[]' not in request.files:
+    # 处理多个作业的文件上传
+    homework_data = {}
+    
+    # 获取所有文件字段名称
+    file_keys = [key for key in request.files.keys() if key.startswith('files[')]
+    
+    if len(file_keys) == 0:
         return jsonify({'error': '没有选择文件'}), 400
     
-    files = request.files.getlist('files[]')
+    # 解析请求参数中的文件
+    for key in file_keys:
+        # 文件名格式类似 files[0][]、files[1][] 等
+        match = re.match(r'files\[(\d+)\](\[\])?', key)
+        if match:
+            homework_index = match.group(1)
+            files = request.files.getlist(key)
+            
+            if len(files) == 0 or files[0].filename == '':
+                continue
+            
+            # 验证并保存所有文件
+            image_paths = []
+            for file in files:
+                if file and allowed_file(file.filename):
+                    filename = secure_filename(file.filename)
+                    filepath = os.path.join(app.config['UPLOAD_FOLDER'], f"{homework_index}_{filename}")
+                    file.save(filepath)
+                    image_paths.append(filepath)
+            
+            if image_paths:
+                if homework_index not in homework_data:
+                    homework_data[homework_index] = {"image_paths": []}
+                homework_data[homework_index]["image_paths"].extend(image_paths)
     
-    # 检查是否选择了文件
-    if len(files) == 0 or files[0].filename == '':
-        return jsonify({'error': '没有选择文件'}), 400
-    
-    # 验证并保存所有文件
-    image_paths = []
-    for file in files:
-        if file and allowed_file(file.filename):
-            filename = secure_filename(file.filename)
-            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-            file.save(filepath)
-            image_paths.append(filepath)
-    
-    if not image_paths:
+    if not homework_data:
         return jsonify({'error': '无有效图片文件'}), 400
     
-    # 存储上传的图片路径到会话
-    return jsonify({'success': True, 'image_paths': image_paths})
+    # 返回每个作业的图片路径信息
+    return jsonify({'success': True, 'homework_data': homework_data})
 
 @app.route('/correct', methods=['POST'])
 def correct_essay():
     data = request.get_json()
     image_paths = data.get('image_paths', [])
+    homework_index = data.get('homework_index', '0')  # 默认为第一个作业
     
     if not image_paths:
         return jsonify({'error': '没有图片路径'}), 400
