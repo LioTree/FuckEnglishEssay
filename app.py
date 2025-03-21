@@ -239,7 +239,8 @@ def generate_diff(original_text, corrected_text):
             corr_file_name = f_corr.name
         
         # 使用icdiff生成差异，然后用aha转换为HTML
-        diff_command = f"icdiff --cols=92 {orig_file_name} {corr_file_name} | aha --title 'Diff'"
+        # diff_command = f"icdiff --cols=50 {orig_file_name} {corr_file_name} | aha --title 'Diff'"
+        diff_command = f"wdiff {orig_file_name} {corr_file_name} | colordiff | aha"
         diff_html = subprocess.check_output(diff_command, shell=True, encoding='utf-8')
         
         # 清理临时文件
