@@ -121,6 +121,11 @@ def correct_essay():
   "overall_comments": "对整篇作文主要问题的总结和评价"
 }
 
+重要提示：
+1. 在sentence_corrections中必须包含原文中的每一个句子，不要遗漏任何句子
+2. 对于完全正确的句子，"corrected"字段应该与"original"相同，并在"comments"中注明"此句正确"或给出肯定评价
+3. 对于有错误的句子，请在"corrected"中提供修正后的版本，并在"comments"中详细解释修改原因
+
 评价请用中文给出。确保你的输出是有效的JSON格式，便于自动处理。不要添加任何额外解释或前后缀，直接输出JSON。"""
             
             # 构建消息内容
