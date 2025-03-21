@@ -31,8 +31,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         homeworkContainer.appendChild(homeworkBlock);
 
+        // 创建新作业的文件存储
+        filesMap.set(newIndex.toString(), new DataTransfer());
+
         // 为新添加的删除按钮添加事件监听
         homeworkBlock.querySelector('.remove-homework').addEventListener('click', function () {
+            // 从filesMap中移除对应作业
+            filesMap.delete(newIndex.toString());
             homeworkBlock.remove();
         });
 
@@ -48,35 +53,96 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     });
 
+    // 存储每个作业块的文件列表
+    const filesMap = new Map();
+
     // 设置文件预览功能
     function setupFilePreview(fileInput, previewContainer) {
+        const homeworkBlock = fileInput.closest('.homework-block');
+        const homeworkIndex = homeworkBlock.dataset.index;
+
+        // 确保当前作业块在filesMap中有数据
+        if (!filesMap.has(homeworkIndex)) {
+            filesMap.set(homeworkIndex, new DataTransfer());
+        }
+
         fileInput.addEventListener('change', function () {
-            previewContainer.innerHTML = '';
+            // 获取当前作业的DataTransfer对象
+            const dataTransfer = filesMap.get(homeworkIndex);
+            
+            // 添加新选择的文件到DataTransfer
             for (let i = 0; i < this.files.length; i++) {
                 const file = this.files[i];
-                if (!file.type.match('image.*')) continue;
-
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const div = document.createElement('div');
-                    div.className = 'preview-item';
-                    div.innerHTML = `
-                        <img src="${e.target.result}" alt="预览">
-                        <button type="button" class="remove-btn" data-index="${i}">×</button>
-                    `;
-                    previewContainer.appendChild(div);
-                };
-                reader.readAsDataURL(file);
+                if (file.type.match('image.*')) {
+                    dataTransfer.items.add(file);
+                }
             }
+            
+            // 更新input的files属性
+            fileInput.files = dataTransfer.files;
+            
+            // 清空预览区域并重新显示所有文件
+            refreshFilePreview(fileInput, previewContainer, homeworkIndex);
         });
 
         // 移除预览图片
         previewContainer.addEventListener('click', function (e) {
             if (e.target.classList.contains('remove-btn')) {
                 e.preventDefault();
-                e.target.closest('.preview-item').remove();
+                
+                // 获取预览项及其索引
+                const previewItem = e.target.closest('.preview-item');
+                const fileIndex = previewItem.dataset.fileIndex;
+                const homeworkBlock = previewContainer.closest('.homework-block');
+                const homeworkIndex = homeworkBlock.dataset.index;
+                const fileInput = homeworkBlock.querySelector('.file-input');
+                
+                // 从DataTransfer中移除文件
+                const dataTransfer = filesMap.get(homeworkIndex);
+                const newDataTransfer = new DataTransfer();
+                
+                // 创建新的DataTransfer，排除被删除的文件
+                for (let i = 0; i < dataTransfer.files.length; i++) {
+                    if (i !== parseInt(fileIndex)) {
+                        newDataTransfer.items.add(dataTransfer.files[i]);
+                    }
+                }
+                
+                // 更新DataTransfer和文件输入
+                filesMap.set(homeworkIndex, newDataTransfer);
+                fileInput.files = newDataTransfer.files;
+                
+                // 刷新预览
+                refreshFilePreview(fileInput, previewContainer, homeworkIndex);
             }
         });
+    }
+
+    // 添加刷新文件预览的函数
+    function refreshFilePreview(fileInput, previewContainer, homeworkIndex) {
+        const dataTransfer = filesMap.get(homeworkIndex);
+        
+        // 清空预览区域
+        previewContainer.innerHTML = '';
+        
+        // 为每个文件创建预览
+        for (let i = 0; i < dataTransfer.files.length; i++) {
+            const file = dataTransfer.files[i];
+            if (!file.type.match('image.*')) continue;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const div = document.createElement('div');
+                div.className = 'preview-item';
+                div.dataset.fileIndex = i;
+                div.innerHTML = `
+                    <img src="${e.target.result}" alt="预览">
+                    <button type="button" class="remove-btn">×</button>
+                `;
+                previewContainer.appendChild(div);
+            };
+            reader.readAsDataURL(file);
+        }
     }
 
     // 为初始作业块设置文件预览
@@ -413,6 +479,10 @@ document.addEventListener('DOMContentLoaded', function () {
         for (let i = 1; i < homeworkBlocks.length; i++) {
             homeworkBlocks[i].remove();
         }
+
+        // 清空文件映射
+        filesMap.clear();
+        filesMap.set('0', new DataTransfer());
 
         homeworkCount = 1;
         resultArea.style.display = 'none';
