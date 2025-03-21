@@ -229,67 +229,65 @@ document.addEventListener('DOMContentLoaded', function () {
             .then(response => {
                 const reader = response.body.getReader();
                 const decoder = new TextDecoder();
+                let buffer = ''; // 创建缓冲区存储未完成的数据
 
                 function processStream({ done, value }) {
                     if (done) {
+                        // 处理结束时，如果缓冲区还有数据，尝试处理它
+                        if (buffer.trim()) {
+                            processEventData(buffer, resultElement);
+                        }
                         return;
                     }
 
+                    // 解码新接收的数据并添加到缓冲区
                     const chunk = decoder.decode(value, { stream: true });
-                    const events = chunk.split('\n\n');
-
-                    // 保存最后一个不完整的事件
-                    let lastEvent = '';
-
-                    for (let i = 0; i < events.length; i++) {
-                        let event = events[i];
-
-                        // 如果是最后一个且不是完整事件，保存并等待下一个数据块
-                        if (i === events.length - 1 && !event.endsWith('\n')) {
-                            lastEvent = event;
-                            break;
-                        }
-
-                        // 合并之前不完整的事件
-                        if (i === 0 && lastEvent) {
-                            event = lastEvent + event;
-                            lastEvent = '';
-                        }
-
-                        if (event.startsWith('data: ')) {
-                            try {
-                                const jsonStr = event.substring(6);
-                                console.log("接收的JSON字符串:", jsonStr);
-                                // 尝试验证JSON是否有效完整
-                                if (!isValidJSON(jsonStr)) {
-                                    console.warn("可能不完整的JSON，保存等待下一个片段:", jsonStr);
-                                    lastEvent = event;
-                                    continue;
-                                }
-                                const data = JSON.parse(jsonStr);
-                                handleStreamData(data, resultElement);
-                            } catch (e) {
-                                console.error('解析事件数据失败:', e, '原始数据:', event.substring(6));
-                                // 可能是不完整的JSON，保存它
-                                if (i === events.length - 1) {
-                                    lastEvent = event;
-                                }
-                            }
-                        }
+                    buffer += chunk;
+                    
+                    // 处理缓冲区中的完整事件
+                    const events = extractEvents(buffer);
+                    buffer = events.remainder; // 更新缓冲区为剩余的不完整数据
+                    
+                    // 处理所有完整事件
+                    for (const event of events.complete) {
+                        processEventData(event, resultElement);
                     }
 
                     return reader.read().then(processStream);
                 }
 
-                // 简单检查JSON是否看起来完整
-                function isValidJSON(str) {
-                    // 检查括号是否匹配
-                    if (str.trim().startsWith('{')) {
-                        const openBraces = (str.match(/{/g) || []).length;
-                        const closeBraces = (str.match(/}/g) || []).length;
-                        return openBraces === closeBraces;
+                // 从缓冲区提取完整的SSE事件
+                function extractEvents(buffer) {
+                    const delimiter = '\n\n';
+                    const events = buffer.split(delimiter);
+                    let completeEvents = [];
+                    
+                    // 如果分割后没有剩余部分，说明所有事件都是完整的
+                    if (buffer.endsWith(delimiter)) {
+                        completeEvents = events;
+                        return { complete: completeEvents, remainder: '' };
                     }
-                    return true; // 非对象类型的JSON
+                    
+                    // 最后一个部分是不完整的，保留它
+                    const remainder = events.pop();
+                    completeEvents = events;
+                    
+                    return { complete: completeEvents, remainder: remainder };
+                }
+
+                // 处理单个事件数据
+                function processEventData(event, resultElement) {
+                    event = event.trim();
+                    if (!event.startsWith('data: ')) return;
+                    
+                    const jsonStr = event.substring(6);
+                    try {
+                        console.log("处理事件数据:", jsonStr);
+                        const data = JSON.parse(jsonStr);
+                        handleStreamData(data, resultElement);
+                    } catch (e) {
+                        console.error('解析事件数据失败:', e, '原始数据:', jsonStr);
+                    }
                 }
 
                 return reader.read().then(processStream);
